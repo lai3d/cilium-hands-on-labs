@@ -74,11 +74,13 @@ root@server:~#
 💻 Networking Fabric
 To showcase the Cilium BGP feature, we need a BGP-capable device to peer with.
 
-For this purpose, we will be leveraging Containerlab and FRR (Free Range Routing). These great tools provide the ability to simulate networking environment in containers.
+For this purpose, we will be leveraging Containerlab and FRR (Free Range Routing). 
+These great tools provide the ability to simulate networking environment in containers.
 
 
 🧪 Containerlab
-Containerlab is a platform that enables users to deploy virtual networking topologies, based on containers and virtual machines. One of the virtual routing appliances that can be deployed via Containerlab is FRR - a feature-rich open-source networking platform.
+Containerlab is a platform that enables users to deploy virtual networking topologies, based on containers and virtual machines. 
+One of the virtual routing appliances that can be deployed via Containerlab is FRR - a feature-rich open-source networking platform.
 
 By the end of the lab, you will have established BGP peering with the FRR virtual devices.
 
