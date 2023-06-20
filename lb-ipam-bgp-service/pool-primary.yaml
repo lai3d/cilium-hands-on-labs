@@ -1,0 +1,13 @@
+# Expression selector
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+    name: "pool-primary"
+spec:
+  cidrs:
+  - cidr: "60.0.10.0/24"
+  serviceSelector:
+    matchExpressions:
+      - {key: color, operator: In, values: [yellow, red, blue]}
+
+
