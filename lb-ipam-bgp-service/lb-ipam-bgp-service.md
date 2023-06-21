@@ -79,8 +79,9 @@ root@server:~#
 ```
 
 If you're curious, you can check out in details the containerlab topology we are deploying as part of the lab.
-
+```bash
 cat topo.yaml
+```
 The main thing to notice is that we are deploying 1 routing node: a single Top of Rack (ToR) router (tor). We are pre-configuring it at boot time with its IP and BGP configuration. At the end of the YAML file, you will also note we are establishing a virtual link between the Cilium node and the ToR router.
 
 In the following tasks, we will configure Cilium to act as IP Address Management delegator for Kubernetes Services and we will run BGP and to establish BGP peering with the ToR device.
@@ -128,12 +129,12 @@ topology:
       - ip addr add 172.0.0.2/24 dev net0
   links:
     - endpoints: ["tor:net0", "cilium:net0"]
-root@server:~# 
 ```
 
 With the following command, we can deploy the topology previously described.
-
+```bash
 containerlab -t topo.yaml deploy
+```
 This typically only takes a few seconds to deploy.
 
 In the next step, we will be deploying Cilium on the node.
@@ -183,8 +184,9 @@ Run cilium status to verify the health of Cilium. The status of Cilium and Opera
 
 cilium status
 Let's verify that BGP has been successfully enabled by checking the Cilium configuration:
-
+```bash
 cilium config view | grep enable-bgp
+```
 Next, we are going to learn about the LB-IPAM features.
 
 ```bash
@@ -229,7 +231,6 @@ Image versions    cilium             quay.io/cilium/cilium:v1.13.0-rc4@sha256:32
                   cilium-operator    quay.io/cilium/operator-generic:v1.13.0-rc4@sha256:19f612d4f1052e26edf33e26f60d64d8fb6caed9f03692b85b429a4ef5d175b2: 1
 root@server:~# cilium config view | grep enable-bgp
 enable-bgp-control-plane                   true
-root@server:~# 
 ```
 
 # The Need for LoadBalancer IP Address Management
@@ -344,7 +345,6 @@ ciliumloadbalancerippool.cilium.io/pool created
 root@server:~# kubectl get svc/service-blue -n tenant-a
 NAME           TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
 service-blue   LoadBalancer   10.96.45.196   20.0.10.80    1234:30370/TCP   52s
-root@server:~# 
 ```
 
 
@@ -385,8 +385,9 @@ Let's now use an IP Pool that matches the color:green label:
 cat pool-green.yaml
 ```
 Let's now deploy it:
-
+```bash
 kubectl apply -f pool-green.yaml
+```
 This time, an IP address from the 40.0.10.0/24 should be assigned to service-green:
 ```bash
 kubectl get svc/service-green -n tenant-b
@@ -517,6 +518,7 @@ spec:
   type: LoadBalancer
   ports:
   - port: 1234
+
 root@server:~# cat pool-yellow.yaml
 # Namespace selector
 apiVersion: "cilium.io/v2alpha1"
@@ -529,10 +531,12 @@ spec:
   serviceSelector:
     matchLabels:
       "io.kubernetes.service.namespace": "tenant-c"
+
 root@server:~# kubectl apply -f service-yellow.yaml
 kubectl apply -f pool-yellow.yaml
 service/service-yellow created
 ciliumloadbalancerippool.cilium.io/pool-yellow created
+
 root@server:~# kubectl get svc/service-yellow -n tenant-c
 NAME             TYPE           CLUSTER-IP     EXTERNAL-IP               PORT(S)          AGE
 service-yellow   LoadBalancer   10.96.94.147   50.0.10.100,60.0.10.100   1234:32019/TCP   12s
@@ -549,21 +553,23 @@ Let's first walk through the BGP Peering configuration.
 Peering policies can be provisioned using simple Kubernetes CRDs, of the kind CiliumBGPPeeringPolicy.
 
 You can use this command to review the peering policy or head out to the Editor tab:
-
+```bash
 cat $HOME/bgp/cilium-bgp-peering-policies.yaml
+```
 The key aspects of the policy are:
 
-the remote peer IP address (peerAddress) and AS Number (peerASN)
-your own local AS Number (localASN)
-Note the exportPodCIDR: true flag: it instructs Cilium to advertise to BGP neighbors the Pod CIDRs. This feature can be enabled or disabled, depending on your requirements.
+- the remote peer IP address (peerAddress) and AS Number (peerASN)
+- your own local AS Number (localASN)
+- Note the exportPodCIDR: true flag: it instructs Cilium to advertise to BGP neighbors the Pod CIDRs. This feature can be enabled or disabled, depending on your requirements.
 
-Note that BGP configuration on Cilium is label-based - only the Cilium-managed nodes with a matching label will deploy a virtual router for BGP peering purposes.
+- Note that BGP configuration on Cilium is label-based - only the Cilium-managed nodes with a matching label will deploy a virtual router for BGP peering purposes.
 
-In our example, only nodes with the kubernetes.io/hostname: clab-bgp-cplane-devel-control-plane label will be running BGP.
+In our example, only nodes with the `kubernetes.io/hostname: clab-bgp-cplane-devel-control-plane` label will be running BGP.
 
 This lab only has a single node and when you run this command filtering on this specific label, we should return the node (meaning that it is labelled as BGP router):
-
+```bash
 kubectl get nodes -l kubernetes.io/hostname=clab-bgp-cplane-devel-control-plane
+```
 For more details on the BGP configuration options, you can read up the official Cilium BGP documentations.
 
 In the BGP Peering Policy provided, you will see some 5 commented lines (from 13 to 17): no need to uncomment them for now. We will do that in a later task.
@@ -658,8 +664,9 @@ Now that we have set up our BGP peering, the peering session between the Cilium 
 Let's verify that the session has been established and that a route has been learned successfully (it might take a few seconds for the sessions to come up).
 
 Run the following (see the next section for more information about this command).
-
+```bash
 docker exec -it clab-bgp-cplane-devel-tor vtysh -c 'show bgp ipv4 summary wide'
+```
 It might take 10-15 seconds for the BGP session to come up but you should eventually see that the session between tor and the cilium node is Up (you will see how long the session has been up on the Up/Down column).
 
 Verify with the following command:
@@ -682,6 +689,7 @@ Neighbor        V         AS    LocalAS   MsgRcvd   MsgSent   TblVer  InQ OutQ  
 172.0.0.2       4      65001      65000         4         4        0    0    0 00:00:43            1        1 N/A
 
 Total number of neighbors 1
+
 root@server:~# docker exec -it clab-bgp-cplane-devel-tor vtysh -c 'show bgp ipv4'
 BGP table version is 1, local router ID is 172.0.0.1, vrf id 0
 Default local pref 100, local AS 65000
@@ -790,8 +798,11 @@ Let's complete a short final quiz and an exam to validate our learnings.
 ```bash
 root@server:~# kubectl apply -f /root/bgp/cilium-bgp-peering-policies.yaml
 ciliumbgppeeringpolicy.cilium.io/tor configured
+```
+```bash
 root@server:~# docker exec -it clab-bgp-cplane-devel-tor vtysh -c 'show bgp ipv4 summary wide'
-
+```
+```
 IPv4 Unicast Summary (VRF default):
 BGP router identifier 172.0.0.1, local AS number 65000 vrf-id 0
 BGP table version 3
@@ -802,7 +813,11 @@ Neighbor        V         AS    LocalAS   MsgRcvd   MsgSent   TblVer  InQ OutQ  
 172.0.0.2       4      65001      65000        18        17        0    0    0 00:06:49            3        3 N/A
 
 Total number of neighbors 1
+```
+```bash
 root@server:~# docker exec -it clab-bgp-cplane-devel-tor vtysh -c 'show bgp ipv4'
+```
+```
 BGP table version is 3, local router ID is 172.0.0.1, vrf id 0
 Default local pref 100, local AS 65000
 Status codes:  s suppressed, d damped, h history, * valid, > best, = multipath,
