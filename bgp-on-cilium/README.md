@@ -1,3 +1,5 @@
+
+```bash
 root@server:~# kind create cluster --config cluster.yaml
 Creating cluster "clab-bgp-cplane-demo" ...
  ✓ Ensuring node image (kindest/node:v1.25.3) 🖼 
@@ -69,7 +71,7 @@ clab-bgp-cplane-demo-worker          NotReady   <none>          4m4s    v1.25.3 
 clab-bgp-cplane-demo-worker2         NotReady   <none>          4m4s    v1.25.3   <none>        <none>        Ubuntu 22.04.1 LTS   5.15.0-1022-gcp   containerd://1.6.9
 clab-bgp-cplane-demo-worker3         NotReady   <none>          4m4s    v1.25.3   <none>        <none>        Ubuntu 22.04.1 LTS   5.15.0-1022-gcp   containerd://1.6.9
 root@server:~# 
-
+```
 
 💻 Networking Fabric
 To showcase the Cilium BGP feature, we need a BGP-capable device to peer with.
@@ -84,6 +86,7 @@ One of the virtual routing appliances that can be deployed via Containerlab is F
 
 By the end of the lab, you will have established BGP peering with the FRR virtual devices.
 
+```bash
 root@server:~# bash -c "$(curl -sL https://get.containerlab.dev)" -- -v 0.31.1
 Downloading https://github.com/srl-labs/containerlab/releases/download/v0.31.1/containerlab_0.31.1_linux_amd64.deb
 Preparing to install containerlab 0.31.1 from package
@@ -506,4 +509,4 @@ PING 10.1.2.110 (10.1.2.110) 56(84) bytes of data.
 --- 10.1.2.110 ping statistics ---
 46 packets transmitted, 46 received, 0% packet loss, time 46081ms
 rtt min/avg/max/mdev = 0.106/0.144/0.268/0.036 ms
-root@server:~# 
+```
