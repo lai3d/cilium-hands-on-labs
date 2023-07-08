@@ -277,8 +277,9 @@ In >_ Terminal 1, you can identify the sith-infiltrator container start on the d
 If you look up a few lines, you can inspect the /docker-entrypoint.sh shell script as an entry point which starts an nginx daemon:
 ```bash
 🚀 process default/sith-infiltrator /docker-entrypoint.sh /docker-entrypoint.sh nginx -g "daemon off;" 🛑 CAP_SYS_ADMIN
+```
 You can see default configuration file edits for the nginx daemon:
-
+```bash
 🚀 process default/sith-infiltrator /bin/grep -q "listen  \[::]\:80;" /etc/nginx/conf.d/default.conf 🛑 CAP_SYS_ADMIN
 🚀 process default/sith-infiltrator /usr/bin/dpkg-query --show --showformat=${Conffiles}\n nginx 🛑 CAP_SYS_ADMIN
 💥 exit    default/sith-infiltrator /usr/bin/touch /etc/nginx/conf.d/default.conf 0 🛑 CAP_SYS_ADMIN
