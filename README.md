@@ -1,1 +1,1 @@
-# cilium-hands-on-labs
+# k8s-hands-on-labs
