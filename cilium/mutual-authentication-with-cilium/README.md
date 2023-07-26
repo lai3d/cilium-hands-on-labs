@@ -2,6 +2,9 @@
 
 https://isovalent.com/labs/mutual-authentication-with-cilium/
 
+https://docs.cilium.io/en/latest/network/servicemesh/mutual-authentication/mutual-authentication/#mutual-authentication-in-cilium
+
+
 Introduced in Cilium 1.14 is support for a much-requested feature: mutual authentication.
 
 From its inception, we looked at delivering an optimal effortless user experience to achieve mutual authentication.
