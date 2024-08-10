@@ -46,7 +46,7 @@ The setup to monitor security events is completed now. Click on Check to reach t
 
 ## Console output:
 
-```base
+```bash
 
 root@server:~# kubectl get nodes
 NAME                 STATUS   ROLES           AGE     VERSION
