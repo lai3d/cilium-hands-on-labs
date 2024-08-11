@@ -1114,8 +1114,12 @@ shell
 copy
 
 run
+
+```bash
 kubectl get ciliumnode kind-worker \
   -o jsonpath='{.spec.ipam.podCIDRs[0]}{"\n"}'
+```
+
 We can finally uncordon the node with:
 
 shell
@@ -1123,7 +1127,11 @@ shell
 copy
 
 run
+
+```bash
 kubectl uncordon $NODE
+```
+
 Scale the goldpinger deployment so it spreads on the newly migrated node:
 
 shell
@@ -1131,7 +1139,11 @@ shell
 copy
 
 run
+
+```bash
 kubectl scale deployment goldpinger --replicas 15
+```
+
 Check the assigned IPs for the new pods:
 
 shell
@@ -1139,7 +1151,11 @@ shell
 copy
 
 run
+
+```bash
 kubectl get po -l app=goldpinger --field-selector spec.nodeName=$NODE -o wide
+```
+
 Then check that all pings work fine with the previously deployed pods in the deployment (it might take a little while, relaunch the command):
 
 shell
@@ -1147,7 +1163,11 @@ shell
 copy
 
 run
+
+```bash
 curl -s http://localhost:32043/metrics | grep '^goldpinger_nodes_health_total'
+```
+
 You can also check the 🔗 Goldpinger tab and refresh it to check that all 15 pods can talk to each other.
 
 ### Repeat for other worker nodes
@@ -1159,6 +1179,8 @@ shell
 copy
 
 run
+
+```bash
 for i in $(seq 2 4); do
   node="kind-worker${i}"
   echo "Migrating node ${node}"
@@ -1168,6 +1190,8 @@ for i in $(seq 2 4); do
   kubectl -n kube-system rollout status ds/cilium -w
   kubectl uncordon $node
 done
+```
+
 Check that the Cilium status is correct:
 
 shell
@@ -1175,7 +1199,11 @@ shell
 copy
 
 run
+
+```bash
 cilium status --wait
+```
+
 The Nodepinger DaemonSet pods will still be on the old Pod CIDR, so let's restart all of them:
 
 shell
@@ -1183,8 +1211,12 @@ shell
 copy
 
 run
+
+```bash
 kubectl rollout restart daemonset nodepinger-goldpinger
 kubectl rollout status daemonset nodepinger-goldpinger
+```
+
 Now check that all pods on worker nodes have a Cilium IP address:
 
 shell
@@ -1192,7 +1224,11 @@ shell
 copy
 
 run
+
+```bash
 kubectl get po -o wide
+```
+
 Check that connectivity is still fine for both the DaemonSet and the Deployment Goldpinger apps:
 
 shell
@@ -1200,11 +1236,15 @@ shell
 copy
 
 run
+
+```bash
 curl -s http://localhost:32042/metrics | grep '^goldpinger_nodes_health_total'
 curl -s http://localhost:32043/metrics | grep '^goldpinger_nodes_health_total'
+```
+
 The only node left to migrate is the control plane.
 
-### REpeat for kind-control-plane
+### Repeat for kind-control-plane
 
 We can now proceed to the migration of the final node.
 
@@ -1215,12 +1255,16 @@ shell
 copy
 
 run
+
+```bash
 NODE="kind-control-plane"
 kubectl drain $NODE --ignore-daemonsets
 kubectl label node $NODE --overwrite "io.cilium.migration/cilium-default=true"
 kubectl -n kube-system delete pod --field-selector spec.nodeName=$NODE -l k8s-app=cilium
 kubectl -n kube-system rollout status ds/cilium -w
 kubectl uncordon $NODE
+```
+
 Ensure the Nodepinger pods are all restarted:
 
 shell
@@ -1228,8 +1272,12 @@ shell
 copy
 
 run
+
+```bash
 kubectl rollout restart daemonset nodepinger-goldpinger
 kubectl rollout status daemonset nodepinger-goldpinger
+```
+
 In addition, restart all csi-node-driver DaemonSet pods inside the calico-system namespace to complete the migration of all existing pods to Cilium:
 
 shell
@@ -1237,8 +1285,11 @@ shell
 copy
 
 run
+
+```bash
 kubectl rollout restart daemonset -n calico-system csi-node-driver
 kubectl rollout status daemonset -n calico-system csi-node-driver
+```
 The status of Cilium should be OK and all pods should be managed by Cilium:
 
 shell
@@ -1246,7 +1297,11 @@ shell
 copy
 
 run
+
+```bash
 cilium status --wait
+```
+
 Now the migration of the nodes is complete, let's clean things up!
 
 #### Console Output
@@ -1567,12 +1622,16 @@ shell
 copy
 
 run
+
+```bash
 cilium install \
   --helm-values values-initial.yaml \
   --helm-set operator.unmanagedPodWatcher.restart=true \
   --helm-set cni.customConf=false \
   --helm-set policyEnforcementMode=default \
   --dry-run-helm-values > values-final.yaml
+```
+
 Again, we are using the cilium-cli to generate an updated Helm config file. Check the differences with the previous values:
 
 shell
@@ -1580,7 +1639,11 @@ shell
 copy
 
 run
+
+```bash
 diff -u --color values-initial.yaml values-final.yaml
+```
+
 As you can see from checking the differences between the two files, we are changing three parameters:
 
 enabling Cilium to write the CNI configuration file by disabling a per node configuration (customConf)
@@ -1593,11 +1656,15 @@ shell
 copy
 
 run
+
+```bash
 helm upgrade --install \
   --namespace kube-system cilium cilium/cilium \
   --values values-final.yaml
 kubectl -n kube-system rollout restart daemonset cilium
 cilium status --wait
+```
+
 Remove the CiliumNodeConfig resource:
 
 shell
@@ -1616,9 +1683,13 @@ shell
 copy
 
 run
+
+```bash
 kubectl delete --force -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
 kubectl delete --force -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/custom-resources.yaml
 kubectl delete --force namespace calico-system
+```
+
 If the commands block, stop them with Ctrl+C and try again.
 
 ### Restart the Nodes
@@ -1630,6 +1701,8 @@ shell
 copy
 
 run
+
+```bash
 for i in " " $(seq 1 4); do
   node="kind-worker${i}"
   echo "Restarting node ${node}"
@@ -1637,6 +1710,8 @@ for i in " " $(seq 1 4); do
   sleep 5 # wait for cilium to catch that the node is missing
   kubectl -n kube-system rollout status ds/cilium -w
 done
+```
+
 Let's finish with the control plane node:
 
 shell
@@ -1644,9 +1719,13 @@ shell
 copy
 
 run
+
+```bash
 docker restart kind-control-plane
 sleep 5
 kubectl -n kube-system rollout status ds/cilium -w
+```
+
 Check Cilium status:
 
 shell
@@ -1654,7 +1733,11 @@ shell
 copy
 
 run
+
+```bash
 cilium status --wait
+```
+
 All pods should now be managed by Cilium (see the "Cluster Pods" section).
 
 Check that connectivity is still fine for both the DaemonSet and the Deployment Goldpinger apps:
@@ -1664,8 +1747,12 @@ shell
 copy
 
 run
+
+```bash
 curl -s http://localhost:32042/metrics | grep '^goldpinger_nodes_health_total'
 curl -s http://localhost:32043/metrics | grep '^goldpinger_nodes_health_total'
+```
+
 Since we've restarted the only control plane in this cluster (you should have at least 3 in production clusters), the state might be a bit broken for a little while.
 
 Check the connectivity:
@@ -1675,7 +1762,11 @@ shell
 copy
 
 run
+
+```bash
 cilium connectivity test
+```
+
 We've now successfully migrated to Cilium!
 
 #### Console Output
