@@ -1,5 +1,8 @@
 # Migrating from calico to cilium
 
+https://docs.cilium.io/en/stable/installation/k8s-install-migration/
+
+
 https://isovalent.com/labs/cilium-migrating-from-calico/
 
 ## Migrating from Calico
@@ -711,12 +714,6 @@ In this lab, we will use cilium-cli to auto-detect settings specific to the unde
 
 Let's generate the values-migration.yaml Helm values file:
 
-shell
-
-copy
-
-run
-
 ```bash
 cilium install \
   --helm-values values-migration.yaml \
@@ -730,12 +727,6 @@ automatically fills in the missing values through the use of the helm-auto-gen-v
 creates a new Helm values file called values-initial.yaml
 
 Review the created file:
-
-shell
-
-copy
-
-run
 
 ```bash
 yq values-initial.yaml
@@ -757,12 +748,6 @@ Calico has several modes of operation to decide which network interface to use b
 
 By default, it is set to `firstFound: true`, which will use the first detected network interface on the node. Check this value with:
 
-shell
-
-copy
-
-run
-
 ```bash
 kubectl get installations.operator.tigera.io default \
   -o jsonpath='{.spec.calicoNetwork.nodeAddressAutodetectionV4}{"\n"}'
@@ -774,22 +759,12 @@ Depending on your Tigera Operator settings (for example if you use the interface
 
 In our lab, we will simply set firstFound to false and use `kubernetes: NodeInternalIP` instead, so Calico uses the node's internal IP as its main interface. Patch the Tigera Operator's configuration with:
 
-shell
-
-copy
-
-run
-
 ```bash
 kubectl patch installations.operator.tigera.io default --type=merge \
   --patch '{"spec": {"calicoNetwork": {"nodeAddressAutodetectionV4": {"firstFound": false, "kubernetes": "NodeInternalIP"}}}}'
 ```
 
 And check the value again:
-
-shell
-
-copy
 
 run
 
@@ -802,12 +777,6 @@ kubectl get installations.operator.tigera.io default \
 
 Let's now install Cilium using helm and the values we have just generated.
 
-shell
-
-copy
-
-run
-
 ```bash
 helm repo add cilium https://helm.cilium.io/
 helm upgrade --install --namespace kube-system cilium cilium/cilium \
@@ -816,12 +785,6 @@ helm upgrade --install --namespace kube-system cilium cilium/cilium \
 
 Verify that Cilium is properly installed (this might take a few minutes):
 
-shell
-
-copy
-
-run
-
 ```bash
 cilium status --wait
 ```
@@ -829,12 +792,6 @@ cilium status --wait
 Note that the Cluster Pods entry indicates that no pods are managed by Cilium. While Cilium is installed on every node and an overlay is established between the nodes, it is not yet configured to manage pods on nodes.
 
 Check the CNI configuration on one of the nodes:
-
-shell
-
-copy
-
-run
 
 ```bash
 docker exec kind-worker ls /etc/cni/net.d/
@@ -875,23 +832,11 @@ This configuration will be used to switch the nodes' CNI configuration from Cali
 
 When the file is saved, head back to the >_ Terminal tab and apply it:
 
-shell
-
-copy
-
-run
-
 ```bash
 kubectl apply --server-side -f ciliumnodeconfig.yaml
 ```
 
 Check the list of nodes on the cluster, with their labels:
-
-shell
-
-copy
-
-run
 
 ```bash
 kubectl get no --show-labels
@@ -1091,23 +1036,11 @@ Navigate back to the >_ Terminal tab.
 
 Let's get started with the kind-worker node:
 
-shell
-
-copy
-
-run
-
 ```bash
 NODE="kind-worker"
 ```
 
 Let's cordon the node:
-
-shell
-
-copy
-
-run
 
 ```bash
 kubectl cordon $NODE
@@ -1117,11 +1050,6 @@ Expect to see an output such as node/kind-worker cordoned.
 
 Let's now drain the node. Note that we use the ignore-daemonset flag as several DaemonSets are still required to run. When we drain a node, the node is automatically cordoned. We cordoned first in this instance to provide clarity in the migration process, but you don't need to do both steps in the future.
 
-shell
-
-copy
-
-run
 
 ```bash
 kubectl drain $NODE --ignore-daemonsets
@@ -1149,23 +1077,12 @@ node/kind-worker drained
 
 Let's verify no pods are running on the drained node (besides the goldpinger pod which is part of a DaemonSet):
 
-shell
-
-copy
-
-run
-
 ```bash
 kubectl get pods -o wide --field-selector spec.nodeName=$NODE
 ```
 
 Verify that the Nodepinger still sees 5 pods:
 
-shell
-
-copy
-
-run
 
 ```bash
 curl -s http://localhost:32042/metrics | grep '^goldpinger_nodes_health_total'
@@ -1175,23 +1092,12 @@ curl -s http://localhost:32042/metrics | grep '^goldpinger_nodes_health_total'
 
 We can now label the node, which will cause the CiliumNodeConfig to apply to this node.
 
-shell
-
-copy
-
-run
-
 ```bash
 kubectl label node $NODE --overwrite "io.cilium.migration/cilium-default=true"
 ```
 
 Restart Cilium on the node. That will trigger the creation of CNI configuration file.
 
-shell
-
-copy
-
-run
 
 ```bash
 kubectl -n kube-system delete pod --field-selector spec.nodeName=$NODE -l k8s-app=cilium
@@ -1209,11 +1115,6 @@ daemon set "cilium" successfully rolled out
 
 Check the CNI configurations on the node:
 
-shell
-
-copy
-
-run
 
 ```bash
 docker exec $NODE ls /etc/cni/net.d/
@@ -1455,9 +1356,11 @@ root@server:~# kubectl get po -l app.kubernetes.io/instance=nodepinger \
   --field-selector spec.nodeName=$NODE -o wide
 NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE          NOMINATED NODE   READINESS GATES
 nodepinger-goldpinger-49v79   1/1     Running   0          11s   10.244.2.19   kind-worker   <none>           <none>
+
 root@server:~# curl -s http://localhost:32042/metrics | grep '^goldpinger_nodes_health_total'
 goldpinger_nodes_health_total{goldpinger_instance="kind-control-plane",status="healthy"} 5
 goldpinger_nodes_health_total{goldpinger_instance="kind-control-plane",status="unhealthy"} 0
+
 root@server:~# cilium status --wait
     /¯¯\
  /¯¯\__/¯¯\    Cilium:             OK
@@ -1480,18 +1383,23 @@ Image versions         cilium             quay.io/cilium/cilium:v1.16.0@sha256:4
 root@server:~# kubectl get ciliumnode kind-worker \
   -o jsonpath='{.spec.ipam.podCIDRs[0]}{"\n"}'
 10.244.2.0/24
+
 root@server:~# kubectl uncordon $NODE
 node/kind-worker uncordoned
+
 root@server:~# kubectl scale deployment goldpinger --replicas 15
 deployment.apps/goldpinger scaled
+
 root@server:~# kubectl get po -l app=goldpinger --field-selector spec.nodeName=$NODE -o wide
 NAME                          READY   STATUS    RESTARTS   AGE   IP             NODE          NOMINATED NODE   READINESS GATES
 goldpinger-57dfcb7b86-4mc48   1/1     Running   0          8s    10.244.2.117   kind-worker   <none>           <none>
 goldpinger-57dfcb7b86-74xpq   1/1     Running   0          8s    10.244.2.47    kind-worker   <none>           <none>
 goldpinger-57dfcb7b86-dn8b9   1/1     Running   0          8s    10.244.2.100   kind-worker   <none>           <none>
+
 root@server:~# curl -s http://localhost:32043/metrics | grep '^goldpinger_nodes_health_total'
 goldpinger_nodes_health_total{goldpinger_instance="kind-control-plane",status="healthy"} 10
 goldpinger_nodes_health_total{goldpinger_instance="kind-control-plane",status="unhealthy"} 0
+
 root@server:~# for i in $(seq 2 4); do
   node="kind-worker${i}"
   echo "Migrating node ${node}"
@@ -1562,6 +1470,7 @@ pod "cilium-cxcfg" deleted
 Waiting for daemon set "cilium" rollout to finish: 4 of 5 updated pods are available...
 daemon set "cilium" successfully rolled out
 node/kind-worker4 uncordoned
+
 root@server:~# cilium status --wait
     /¯¯\
  /¯¯\__/¯¯\    Cilium:             OK
@@ -1581,6 +1490,7 @@ Helm chart version:
 Image versions         cilium-operator    quay.io/cilium/operator-generic:v1.16.0@sha256:d6621c11c4e4943bf2998af7febe05be5ed6fdcf812b27ad4388f47022190316: 1
                        cilium             quay.io/cilium/cilium:v1.16.0@sha256:46ffa4ef3cf6d8885dcc4af5963b0683f7d59daa90d49ed9fb68d3b1627fe058: 5
                        cilium-envoy       quay.io/cilium/cilium-envoy:v1.29.7-39a2a56bbd5b3a591f69dbca51d3e30ef97e0e51@sha256:bd5ff8c66716080028f414ec1cb4f7dc66f40d2fb5a009fff187f4a9b90b566b: 5
+
 root@server:~# kubectl rollout restart daemonset nodepinger-goldpinger
 kubectl rollout status daemonset nodepinger-goldpinger
 daemonset.apps/nodepinger-goldpinger restarted
@@ -1596,6 +1506,7 @@ Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 out of 5 new
 Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 out of 5 new pods have been updated...
 Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 of 5 updated pods are available...
 daemon set "nodepinger-goldpinger" successfully rolled out
+
 root@server:~# kubectl get po -o wide
 NAME                          READY   STATUS    RESTARTS   AGE     IP              NODE                 NOMINATED NODE   READINESS GATES
 goldpinger-57dfcb7b86-4mc48   1/1     Running   0          3m18s   10.244.2.117    kind-worker          <none>           <none>
@@ -1618,6 +1529,7 @@ nodepinger-goldpinger-762hs   1/1     Running   0          6s      192.168.82.10
 nodepinger-goldpinger-77gc8   1/1     Running   0          8s      10.244.2.191    kind-worker          <none>           <none>
 nodepinger-goldpinger-r6j8p   1/1     Running   0          5s      10.244.1.192    kind-worker3         <none>           <none>
 nodepinger-goldpinger-x5944   1/1     Running   0          10s     10.244.3.231    kind-worker2         <none>           <none>
+
 root@server:~# NODE="kind-control-plane"
 kubectl drain $NODE --ignore-daemonsets
 kubectl label node $NODE --overwrite "io.cilium.migration/cilium-default=true"
@@ -1646,6 +1558,7 @@ pod "cilium-bf4mv" deleted
 Waiting for daemon set "cilium" rollout to finish: 4 of 5 updated pods are available...
 daemon set "cilium" successfully rolled out
 node/kind-control-plane uncordoned
+
 root@server:~# kubectl rollout restart daemonset nodepinger-goldpinger
 kubectl rollout status daemonset nodepinger-goldpinger
 daemonset.apps/nodepinger-goldpinger restarted
@@ -1662,6 +1575,7 @@ Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 out of 5 new
 Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 out of 5 new pods have been updated...
 Waiting for daemon set "nodepinger-goldpinger" rollout to finish: 4 of 5 updated pods are available...
 daemon set "nodepinger-goldpinger" successfully rolled out
+
 root@server:~# kubectl rollout restart daemonset -n calico-system csi-node-driver
 kubectl rollout status daemonset -n calico-system csi-node-driver
 daemonset.apps/csi-node-driver restarted
@@ -1700,6 +1614,7 @@ root@server:~#
 ```
 
 ## 🧹 Clean-up
+
 Now the migration has been completed, let's update the Cilium configuration to support Network Policies and remove the previous network plugin.
 
 ### Update the cilium configuration
@@ -1859,6 +1774,7 @@ routingMode: tunnel
 tunnel: vxlan
 tunnelPort: 8473
 tunnelProtocol: vxlan
+
 root@server:~# helm upgrade --install \
   --namespace kube-system cilium cilium/cilium \
   --values values-final.yaml
@@ -1898,6 +1814,7 @@ Image versions         cilium             quay.io/cilium/cilium:v1.16.0@sha256:4
                        cilium-operator    quay.io/cilium/operator-generic:v1.16.0@sha256:d6621c11c4e4943bf2998af7febe05be5ed6fdcf812b27ad4388f47022190316: 1
 root@server:~# kubectl delete -n kube-system ciliumnodeconfig cilium-default
 ciliumnodeconfig.cilium.io "cilium-default" deleted
+
 root@server:~# kubectl delete --force -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
 kubectl delete --force -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/custom-resources.yaml
 kubectl delete --force namespace calico-system
@@ -1934,6 +1851,7 @@ installation.operator.tigera.io "default" force deleted
 Error from server (NotFound): error when deleting "https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/custom-resources.yaml": the server could not find the requested resource (delete apiservers.operator.tigera.io default)
 Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
 namespace "calico-system" force deleted
+
 root@server:~# for i in " " $(seq 1 4); dodo
   node="kind-worker${i}"
   echo "Restarting node ${node}"
@@ -1965,6 +1883,7 @@ sleep 5
 kubectl -n kube-system rollout status ds/cilium -w
 kind-control-plane
 daemon set "cilium" successfully rolled out
+
 root@server:~# cilium status --wait
     /¯¯\
  /¯¯\__/¯¯\    Cilium:             OK
